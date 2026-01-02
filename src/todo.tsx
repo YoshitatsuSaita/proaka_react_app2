@@ -123,7 +123,7 @@ const handleRemove = (id: number, delete_flg: boolean) => {
             onChange={(e) => handleEdit(todo.id, e.target.value)}
             />  
             <button onClick={() => handleRemove(todo.id, !todo.delete_flg)}>
-             {todo.delete_flg ? '復元' : '削除'}
+             {todo.delete_flg ? '復元' : '削除'}  
             </button>
           </li>//todoのリストを表示
           );

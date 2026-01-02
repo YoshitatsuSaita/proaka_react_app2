@@ -46,7 +46,7 @@ const Todo: React.FC =()=>{
     }
     return todo;
   });
-  // todosステートの書き換えがあるかをチェック
+  // todosステートの書き換えがあるかどうかチェック
     console.log('=== Original todos ===');
     todos.map((todo) => {
       console.log(`id: ${todo.id}, value: ${todo.content}`);

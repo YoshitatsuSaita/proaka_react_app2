@@ -41,6 +41,7 @@ const Todo: React.FC =()=>{
      */
   const newTodos = todos.map((todo) => {
     if (todo.id === id) {
+      //  新オブジェクトを作成して返す
       return {...todo,content : value };
     }
     return todo;

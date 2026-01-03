@@ -1,4 +1,5 @@
-import React,{useState} from "react";
+import React, { useState, useEffect } from 'react';
+import localforage from 'localforage';
 
 //"Todo"型の定義をコンポーネント外で行う
 type Todo={
@@ -40,61 +41,7 @@ const Todo: React.FC =()=>{
     setText('');//フォームのリセット
   };
 
-  const handleEdit = (id: number, value: string) => {
-  setTodos((todos) => {
-    /**
-     * 引数として渡された todo の id が一致する
-     * 更新前の todos ステート内の todo の
-     * value プロパティを引数 value (= e.target.value) に書き換える
-     */
-  const newTodos = todos.map((todo) => {
-    if (todo.id === id) {
-      //  新オブジェクトを作成して返す
-      return {...todo,content : value };
-    }
-    return todo;
-  });
-  // todosステートの書き換えがあるかどうかチェック
-    console.log('=== Original todos ===');
-    todos.map((todo) => {
-      console.log(`id: ${todo.id}, value: ${todo.content}`);
-    });
-
-  return newTodos;
-  });
-};
-
-  const handleCheck = (id: number, completed_flg: boolean) => {
-    setTodos((todos) => {
-      const newTodos = todos.map((todo) => {
-        if (todo.id === id) {
-          return { ...todo, completed_flg };
-        }
-        return todo;
-      });
-
-    return newTodos;
-  });
-};
-
-const handleRemove = (id: number, delete_flg: boolean) => {
-  setTodos((todos) => {
-    const newTodos = todos.map((todo) => {
-      if (todo.id === id) {
-        return { ...todo, delete_flg };
-      }
-      return todo;
-    });
-
-    return newTodos;
-  });
-};
-
-const handleFilterChange = (filter: Filter) => {
-  setFilter(filter);
-};
-
- // フィルタリングされたタスクリストを取得する関数
+   // フィルタリングされたタスクリストを取得する関数
  const getFilteredTodos = () => {
   switch (filter) {
     case 'completed':
@@ -112,6 +59,50 @@ const handleFilterChange = (filter: Filter) => {
   }
 };
 
+const handleTodo = <K extends keyof Todo, V extends Todo[K]>(
+    id: number,
+    key: K,
+    value: V
+  ) => {
+    setTodos((todos) => {
+      const newTodos = todos.map((todo) => {
+        if (todo.id === id) {
+          return { ...todo, [key]: value };
+        } else {
+          return todo;
+        }
+      });
+  
+      return newTodos;
+    });
+  };
+
+  // const updateTodo = <T extends keyof Todo>(todos: Todo[], id: number, key: T, value: Todo[T]): Todo[] => {
+  //   return todos.map((todo) => {
+  //     if (todo.id === id) {
+  //       return { ...todo, [key]: value };
+  //     }
+  //     return todo;
+  //   });
+  // };
+
+  // // 共通の更新関数を使用したイベント処理関数
+  // const handleEdit = (id: number, value: string) => {
+  //   setTodos((todos) => updateTodo(todos, id, 'content', value));
+  // };
+
+  // const handleCheck = (id: number, completed_flg: boolean) => {
+  //   setTodos((todos) => updateTodo(todos, id, 'completed_flg', completed_flg));
+  // };
+
+  // const handleRemove = (id: number, delete_flg: boolean) => {
+  //   setTodos((todos) => updateTodo(todos, id, 'delete_flg', delete_flg));
+  // };
+
+  const handleFilterChange = (filter: Filter) => {
+    setFilter(filter);
+  };
+
 const isFormDisabled = filter === 'completed' || filter === 'delete';
 
 // 物理的に削除する関数
@@ -119,7 +110,24 @@ const handleEmpty = () => {
   setTodos((todos) => todos.filter((todo) => !todo.delete_flg));
 };
 
+// useEffect フックを使ってコンポーネントのマウント時にデータを取得
+useEffect(() => {
+  localforage.getItem('todo-20240622').then((values) => {
+    if (values) {
+      setTodos(values as Todo[]);
+    }
+  });
+}, []);
+
+
+// useEffect フックを使って todos ステートが更新されるたびにデータを保存
+useEffect(() => {
+  localforage.setItem('todo-20240622', todos);
+}, [todos]);
+
+
 return (
+  
   <div className="todo-container">
     <select
       defaultValue="all"
@@ -130,52 +138,52 @@ return (
       <option value="unchecked">現在のタスク</option>
       <option value="delete">ごみ箱</option>
     </select>
-      {/* フィルターが `delete` のときは「ごみ箱を空にする」ボタンを表示 */}
-      {filter === 'delete' ? (
-        <button onClick={handleEmpty}>
-          ごみ箱を空にする
-        </button>
-      ) : (
-        // フィルターが `completed` でなければ Todo 入力フォームを表示
-        filter !== 'completed' && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
-          >
-            <input
-              type="text"
-              value={text} // フォームの入力値をステートにバインド
-              disabled={isFormDisabled}
-              onChange={(e) => setText(e.target.value)} // 入力値が変わった時にステートを更新
-            />
-            <button type="submit">追加</button>
-          </form>
-        )
-      )}
+    {/* フィルターが `delete` のときは「ごみ箱を空にする」ボタンを表示 */}
+    {filter === 'delete' ? (
+      <button onClick={handleEmpty}>
+        ごみ箱を空にする
+      </button>
+    ) : (
+      // フィルターが `completed` でなければ Todo 入力フォームを表示
+      filter !== 'completed' && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <input
+            type="text"
+            value={text} // フォームの入力値をステートにバインド
+            onChange={(e) => setText(e.target.value)} // 入力値が変わった時にステートを更新
+          />
+          <button type="submit">追加</button>
+        </form>
+      )
+    )}
     <ul>
       {getFilteredTodos().map((todo) => (
         <li key={todo.id}>
           <input
             type="checkbox"
-            checked={isFormDisabled}
-            onChange={() => handleCheck(todo.id, !todo.completed_flg)}
+            disabled={todo.delete_flg}
+            checked={todo.completed_flg}
+            onChange={() => handleTodo(todo.id, 'completed_flg', !todo.completed_flg)}
           />
           <input
             type="text"
+            disabled={todo.completed_flg || todo.delete_flg}
             value={todo.content}
-            disabled={todo.completed_flg}
-            onChange={(e) => handleEdit(todo.id, e.target.value)}
+            onChange={(e) => handleTodo(todo.id, 'content', e.target.value)}
           />
-          <button onClick={() => handleRemove(todo.id, !todo.delete_flg)}>
+          <button onClick={() => handleTodo(todo.id, 'delete_flg', !todo.delete_flg)}>
             {todo.delete_flg ? '復元' : '削除'}
           </button>
         </li>
       ))}
     </ul>
   </div>
-  );
+);
 };
 
 export default Todo;

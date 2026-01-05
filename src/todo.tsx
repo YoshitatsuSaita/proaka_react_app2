@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { fetchTodos, createTodo, updateTodo, deleteTodo } from './api';
 
-export interface Todo {
-  content: string;//プロパティcontentは文字列
-  readonly id: number;//書き換えられない一意なkey
-  completed_flg: boolean; // 完了/未完了 (= true or false) を表すので型は Boolean型 
-  delete_flg: boolean, // 削除/未削除 (= true or false) を表すので型は Boolean型 
-};
+import TodoItem from './components/TodoItem'; // 相対パスを正しく設定
+import type { Todo } from './types'; // type-only import で型をインポート
+
+﻿import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd'; // DnD用に追加
+
+// export interface Todo {
+//   content: string;//プロパティcontentは文字列
+//   readonly id: number;//書き換えられない一意なkey
+//   completed_flg: boolean; // 完了/未完了 (= true or false) を表すので型は Boolean型 
+//   delete_flg: boolean, // 削除/未削除 (= true or false) を表すので型は Boolean型 
+// };
 
 type Filter = 'all' | 'completed' | 'unchecked' | 'delete'; // <-- 追加
 
@@ -37,6 +42,7 @@ const handleSubmit = () => {
     content: text,
     completed_flg: false,
     delete_flg: false,
+    sort: 0,
   };
 
   createTodo(newTodo).then(data => {
@@ -64,23 +70,23 @@ const handleSubmit = () => {
   }
 };
 
-// 特定のTodoのプロパティを更新する関数
-const handleTodo = <K extends keyof Todo, V extends Todo[K]>(
-  id: number,
-  key: K,
-  value: V
-) => {
-  const updatedTodos = todos.map(todo =>
-    todo.id === id ? { ...todo, [key]: value } : todo
-  );
+// // 特定のTodoのプロパティを更新する関数
+// const handleTodo = <K extends keyof Todo, V extends Todo[K]>(
+//   id: number,
+//   key: K,
+//   value: V
+// ) => {
+//   const updatedTodos = todos.map(todo =>
+//     todo.id === id ? { ...todo, [key]: value } : todo
+//   );
 
-  setTodos(updatedTodos);
+//   setTodos(updatedTodos);
 
-  const todo = updatedTodos.find(todo => todo.id === id);
-  if (todo) {
-    updateTodo(id, todo);
-  }
-};
+//   const todo = updatedTodos.find(todo => todo.id === id);
+//   if (todo) {
+//     updateTodo(id, todo);
+//   }
+// };
 
   // const updateTodo = <T extends keyof Todo>(todos: Todo[], id: number, key: T, value: Todo[T]): Todo[] => {
   //   return todos.map((todo) => {
@@ -114,29 +120,45 @@ const handleEmpty = () => {
   Promise.all(deletePromises).then(() => setTodos(filteredTodos));
 };
 
-
-
-
-return (
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      console.log("ドラッグがキャンセルされました");
+      return;
+    }
   
-  <div className="todo-container">
-    <select
-      defaultValue="all"
-      onChange={(e) => handleFilterChange(e.target.value as Filter)}
-    >
-      <option value="all">すべてのタスク</option>
-      <option value="completed">完了したタスク</option>
-      <option value="unchecked">現在のタスク</option>
-      <option value="delete">ごみ箱</option>
-    </select>
-    {/* フィルターが `delete` のときは「ごみ箱を空にする」ボタンを表示 */}
-    {filter === 'delete' ? (
-      <button onClick={handleEmpty}>
-        ごみ箱を空にする
-      </button>
-    ) : (
-      // フィルターが `completed` でなければ Todo 入力フォームを表示
-      filter !== 'completed' && (
+    const newTodos = Array.from(todos);
+    const [movedTodo] = newTodos.splice(result.source.index, 1);
+    newTodos.splice(result.destination.index, 0, movedTodo);
+  
+    // 並び替え後のUIを即時更新
+    setTodos(newTodos);
+    console.log("並べ替え後のTodos:", newTodos);
+  
+    // サーバー側に並び替え結果を非同期で送信
+    newTodos.forEach((todo, index) => {
+      todo.sort = index + 1;
+      updateTodo(todo.id, todo).catch((error) => {
+        console.error(`Todo ${todo.id} の更新に失敗しました:`, error);
+      });
+    });
+  };
+
+  return (
+    <div className="todo-container">
+      <select
+        defaultValue="all"
+        onChange={(e) => handleFilterChange(e.target.value as Filter)}
+      >
+        <option value="all">すべてのタスク</option>
+        <option value="completed">完了したタスク</option>
+        <option value="unchecked">現在のタスク</option>
+        <option value="delete">ごみ箱</option>
+      </select>
+  
+      {filter === 'delete' && (
+        <button onClick={handleEmpty}>ごみ箱を空にする</button>
+      )}
+      {filter !== 'completed' && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -145,36 +167,43 @@ return (
         >
           <input
             type="text"
-            value={text} // フォームの入力値をステートにバインド
-            onChange={(e) => setText(e.target.value)} // 入力値が変わった時にステートを更新
+            value={text}
+            onChange={(e) => setText(e.target.value)}
           />
           <button type="submit">追加</button>
         </form>
-      )
-    )}
-    <ul>
-      {getFilteredTodos().map((todo) => (
-        <li key={todo.id}>
-          <input
-            type="checkbox"
-            disabled={todo.delete_flg}
-            checked={todo.completed_flg}
-            onChange={() => handleTodo(todo.id, 'completed_flg', !todo.completed_flg)}
-          />
-          <input
-            type="text"
-            disabled={todo.completed_flg || todo.delete_flg}
-            value={todo.content}
-            onChange={(e) => handleTodo(todo.id, 'content', e.target.value)}
-          />
-          <button onClick={() => handleTodo(todo.id, 'delete_flg', !todo.delete_flg)}>
-            {todo.delete_flg ? '復元' : '削除'}
-          </button>
-        </li>
-      ))}
-    </ul>
-  </div>
-);
+      )}
+  
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="todos">
+          {(provided) => (
+            <ul {...provided.droppableProps} ref={provided.innerRef}>
+              {getFilteredTodos().map((todo, index) => (
+                <Draggable
+                  key={todo.id}
+                  draggableId={String(todo.id)}
+                  index={index}
+                >
+                  {(provided, snapshot) => (
+                    <TodoItem
+                      todo={todo}
+                      updateTodo={updateTodo}
+                      setTodos={setTodos}
+                      todos={todos}
+                      index={index}
+                      provided={provided}
+                      snapshot={snapshot}
+                    />
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </ul>
+          )}
+        </Droppable>
+      </DragDropContext>
+    </div>
+  );
 };
 
 export default Todo;

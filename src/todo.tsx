@@ -6,12 +6,6 @@ import type { Todo } from './types'; // type-only import で型をインポー�
 
 ﻿import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd'; // DnD用に追加
 
-// export interface Todo {
-//   content: string;//プロパティcontentは文字列
-//   readonly id: number;//書き換えられない一意なkey
-//   completed_flg: boolean; // 完了/未完了 (= true or false) を表すので型は Boolean型 
-//   delete_flg: boolean, // 削除/未削除 (= true or false) を表すので型は Boolean型 
-// };
 
 type Filter = 'all' | 'completed' | 'unchecked' | 'delete'; // <-- 追加
 
@@ -70,46 +64,6 @@ const handleSubmit = () => {
   }
 };
 
-// // 特定のTodoのプロパティを更新する関数
-// const handleTodo = <K extends keyof Todo, V extends Todo[K]>(
-//   id: number,
-//   key: K,
-//   value: V
-// ) => {
-//   const updatedTodos = todos.map(todo =>
-//     todo.id === id ? { ...todo, [key]: value } : todo
-//   );
-
-//   setTodos(updatedTodos);
-
-//   const todo = updatedTodos.find(todo => todo.id === id);
-//   if (todo) {
-//     updateTodo(id, todo);
-//   }
-// };
-
-  // const updateTodo = <T extends keyof Todo>(todos: Todo[], id: number, key: T, value: Todo[T]): Todo[] => {
-  //   return todos.map((todo) => {
-  //     if (todo.id === id) {
-  //       return { ...todo, [key]: value };
-  //     }
-  //     return todo;
-  //   });
-  // };
-
-  // // 共通の更新関数を使用したイベント処理関数
-  // const handleEdit = (id: number, value: string) => {
-  //   setTodos((todos) => updateTodo(todos, id, 'content', value));
-  // };
-
-  // const handleCheck = (id: number, completed_flg: boolean) => {
-  //   setTodos((todos) => updateTodo(todos, id, 'completed_flg', completed_flg));
-  // };
-
-  // const handleRemove = (id: number, delete_flg: boolean) => {
-  //   setTodos((todos) => updateTodo(todos, id, 'delete_flg', delete_flg));
-  // };
-
 // 物理的に削除する関数
 const handleEmpty = () => {
   const filteredTodos = todos.filter(todo => !todo.delete_flg);
@@ -158,7 +112,7 @@ const handleEmpty = () => {
       {filter === 'delete' && (
         <button onClick={handleEmpty}>ごみ箱を空にする</button>
       )}
-      {filter !== 'completed' && (
+      {!isFormDisabled &&(
         <form
           onSubmit={(e) => {
             e.preventDefault();
